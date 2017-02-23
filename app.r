@@ -1,14 +1,14 @@
 source("global.R")
 options(shiny.maxRequestSize=30*1024^2) 
 
-ui <- shinyUI(navbarPage("Cap App", theme = shinytheme("lumen"),
+ui <- shinyUI(navbarPage("Application to Explore Spatial Regression Techniques", theme = shinytheme("lumen"),
               windowTitle = "Cap App",
               tabPanel("Load Data",
                 sidebarLayout(
                   sidebarPanel(
                     fileInput("file",'Input file 1',accept=c('.csv', '.shp','.dbf','.sbn','.sbx','.shx',".prj",'.geojson'), multiple=TRUE),
                     tags$hr(),
-                    uiOutput("fi")                    
+                    fileInput("file2",'Input file 2',accept=c('.csv', '.shp','.dbf','.sbn','.sbx','.shx',".prj",'.geojson'), multiple=TRUE)
                     ),
               mainPanel(
                 uiOutput("tb")
@@ -41,7 +41,6 @@ server <- shinyServer(function(input,output, session){
     shape<-st_read(getshp)
 
   })
-  
   data2 <- reactive({
     myshape<- input$file2
     if (is.null(myshape)) 
@@ -54,9 +53,7 @@ server <- shinyServer(function(input,output, session){
     
     getshp <- list.files(dir, pattern="*.shp", full.names=TRUE)
     shape<-st_read(getshp)
-    
   })
-  
 
   # this reactive output contains the summary of the dataset and display the summary in table format
   output$filedf <- renderPlot({
@@ -65,21 +62,64 @@ server <- shinyServer(function(input,output, session){
   })
   
   # this reactive output contains the summary of the dataset and display the summary in table format
-  output$sum <- renderTable({
+  output$sum <- renderPrint({
     if(is.null(data())){return ()}
-    plot(data())
+    summary(data())
     
   })
   
-  # This reactive output contains the dataset and display the dataset in table format
-  output$table <- renderTable({
+  output$reg <- renderPrint({
     if(is.null(data())){return ()}
-    data()
+    data.ols<-lm(kioskId~bikesAvail+docksAvail, data=data())
+    sjt.lm(data.ols)
+  })
+  
+  # This reactive output contains the dataset and display the dataset in table format
+  output$table <- renderDataTable({
+    if(is.null(data())){return ()}
+    as.data.frame(data())
   })
   # This reactive output contains the dataset and display the dataset in table format
   output$map <- renderLeaflet({
-    leaflet(data()) %>% addTiles() %>% 
-      addMarkers()
+    icons <- awesomeIcons(
+      icon = 'ion-android-bicycle',
+      library = 'ion'
+    )
+    icons2 <- awesomeIcons(
+      icon = 'ion-android-car',
+      markerColor = 'red',
+      library = 'ion'
+    )
+    html_legend <- "<img src='http://leafletjs.com/docs/images/leaf-green.png'>green<br/>
+<img src='http://leafletjs.com/docs/images/leaf-red.png'>red"
+    
+    if(!is.null(data())&!is.null(data2())){return (
+      leaflet() %>% addTiles() %>% 
+        addAwesomeMarkers(data = data(),
+                          icon = icons,
+                          popup = data()$addressStr,
+                          group ="data 1") %>% 
+        addAwesomeMarkers(data = data2(), 
+                          icon = icons2,
+                          popup = data2()$LOCATION,
+                          group = "data 2") %>% 
+        addControl(html = html_legend, position = "bottomleft")
+    )}
+    if(!is.null(data2())){return (
+      leaflet() %>% addTiles() %>% 
+        addAwesomeMarkers(data = data2(), 
+                          icon = icons2, 
+                 popup = data2()$LOCATION,
+                 group = "Data 2")
+    )}
+    if(!is.null(data())){return (
+    leaflet() %>% addTiles() %>% 
+      addAwesomeMarkers(data = data(),
+                 icon = icons,
+                 popup = data()$addressStr,
+                 group = "Data 1")
+    )}
+
   })
   
   output$selection <- renderPrint(
@@ -87,31 +127,25 @@ server <- shinyServer(function(input,output, session){
   
   observeEvent(input$button, {
     toggle("slider1")
-  })
-
-  output$fi <- renderUI({
-    if(is.null(data()))
-      return()
-    else
-      fileInput("file2",'Input file 2',accept=c('.csv', '.shp','.dbf','.sbn','.sbx','.shx',".prj",'.geojson'), multiple=TRUE)
     
   })
+  
+  
   # the following renderUI is used to dynamically generate the tabsets when the file is loaded. Until the file is loaded, app will not show the tabset.
   output$tb <- renderUI({
     if(is.null(data()))
-      h5("Powered by", tags$img(src='RStudio-Ball.png', heigth=200, width=200))
+      h5("Powered by", tags$img(src='psu.png', heigth=200, width=200))
     else
       tabsetPanel(tabPanel("About file", plotOutput("filedf")),
-                  tabPanel("Data", tableOutput("contents")),
-                  tabPanel("Summary", tableOutput("sum")),
+                  tabPanel("Summary", verbatimTextOutput("sum")),
+                  tabPanel("Data", dataTableOutput("table")),
                   tabPanel("Attribute", verbatimTextOutput("selection"),  
                            chooserInput("mychooser", "Available frobs", "Selected frobs",
-                                        names(data()), names(data2()), size = 10, multiple = TRUE)),
-                  tabPanel("Map", leafletOutput("map"),
-                           useShinyjs(),
-                           h3("Toggle Transparency"),
-                           actionButton("button", "Toggle slider"),
-                           sliderInput("slider1", "Slider 1", 0, 10000, 1000)))
+                                        names(data()), names(data2()), size = 10, multiple = TRUE),
+                  h5("Move Variable to the right for use in Spatial Regression Model"),
+                  actionButton("button", "Select Variable")),
+                  tabPanel("Regression", verbatimTextOutput("reg")),
+                  tabPanel("Map", leafletOutput("map", width = "1200px", height = "600px")))
   })
 })
 

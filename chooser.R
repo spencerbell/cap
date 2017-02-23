@@ -1,4 +1,4 @@
-chooserInput <- function(inputId, leftLabel, rightLabel, leftChoices, rightChoices,
+  chooserInput <- function(inputId, leftLabel, rightLabel, leftChoices, rightChoices,
   size = 5, multiple = FALSE) {
   
   leftChoices <- lapply(leftChoices, tags$option)
