@@ -52,7 +52,7 @@ server <- shinyServer(function(input,output, session){
       file.rename(myshape[i,4], paste0(dir,"/",myshape[i,1]))}
     
     getshp <- list.files(dir, pattern="*.shp", full.names=TRUE)
-    shape<-st_read(getshp)
+    shape<-st_transform(st_read(getshp),'+proj=longlat +datum=WGS84')
   })
 
   # this reactive output contains the summary of the dataset and display the summary in table format
@@ -68,10 +68,11 @@ server <- shinyServer(function(input,output, session){
     
   })
   
-  output$reg <- renderPrint({
+  output$reg <- renderUI({
     if(is.null(data())){return ()}
     data.ols<-lm(kioskId~bikesAvail+docksAvail, data=data())
-    sjt.lm(data.ols)
+    data.ols2 <- sjt.lm(data.ols)
+    HTML(data.ols2$knitr)
   })
   
   # This reactive output contains the dataset and display the dataset in table format
@@ -94,17 +95,24 @@ server <- shinyServer(function(input,output, session){
 <img src='http://leafletjs.com/docs/images/leaf-red.png'>red"
     
     if(!is.null(data())&!is.null(data2())){return (
+      if (class(st_geometry(data2()))[1] == "sfc_MULTIPOLYGON"){
       leaflet() %>% addTiles() %>% 
         addAwesomeMarkers(data = data(),
                           icon = icons,
                           popup = data()$addressStr,
-                          group ="data 1") %>% 
-        addAwesomeMarkers(data = data2(), 
-                          icon = icons2,
-                          popup = data2()$LOCATION,
-                          group = "data 2") %>% 
-        addControl(html = html_legend, position = "bottomleft")
-    )}
+                          group ="data 1") %>%
+          addPolygons(data = data2()) %>%
+        addControl(html = html_legend, position = "bottomleft")}
+        else if (class(st_geometry(data2()))[1] == "sfc_POINT"){
+          leaflet() %>% addTiles() %>% 
+            addAwesomeMarkers(data = data(),
+                              icon = icons,
+                              popup = data()$addressStr,
+                              group ="data 1") %>%
+            addMarkers(data = data2()) %>% 
+        addControl(html = html_legend, position = "bottomleft")}
+    )
+      }
     if(!is.null(data2())){return (
       leaflet() %>% addTiles() %>% 
         addAwesomeMarkers(data = data2(), 
@@ -134,7 +142,7 @@ server <- shinyServer(function(input,output, session){
   # the following renderUI is used to dynamically generate the tabsets when the file is loaded. Until the file is loaded, app will not show the tabset.
   output$tb <- renderUI({
     if(is.null(data()))
-      h5("Powered by", tags$img(src='psu.png', heigth=200, width=200))
+      h5("Powered by", tags$img(src='psu2.png', heigth=200, width=200))
     else
       tabsetPanel(tabPanel("About file", plotOutput("filedf")),
                   tabPanel("Summary", verbatimTextOutput("sum")),
@@ -144,8 +152,11 @@ server <- shinyServer(function(input,output, session){
                                         names(data()), names(data2()), size = 10, multiple = TRUE),
                   h5("Move Variable to the right for use in Spatial Regression Model"),
                   actionButton("button", "Select Variable")),
-                  tabPanel("Regression", verbatimTextOutput("reg")),
-                  tabPanel("Map", leafletOutput("map", width = "1200px", height = "600px")))
+                  tabPanel("Regression", htmlOutput("reg")),
+                  tabPanel("Map", leafletOutput("map", width = "1200px", height = "600px"),
+                           absolutePanel(top = 10, right = 10,
+                                         selectInput("location", "Addresses", c("", names(data())), selected = "")
+                                         )))
   })
 })
 
