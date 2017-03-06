@@ -1,5 +1,5 @@
-  chooserInput <- function(inputId, leftLabel, rightLabel, leftChoices, rightChoices,
-  size = 5, multiple = FALSE) {
+ chooserInput <- function(inputId, leftLabel, rightLabel, leftChoices, rightChoices,
+                         size = 5, multiple = FALSE) {
   
   leftChoices <- lapply(leftChoices, tags$option)
   rightChoices <- lapply(rightChoices, tags$option)
@@ -13,21 +13,36 @@
     singleton(tags$head(
       tags$script(src="chooser-binding.js"),
       tags$style(type="text/css",
-        HTML(".chooser-container { display: inline-block; }")
+                 HTML(".chooser-container { display: inline-block; }")
       )
     )),
-    div(id=inputId, class="chooser",
-      div(class="chooser-container chooser-left-container",
-        tags$select(class="left", size=size, multiple=multiple, leftChoices)
-      ),
-      div(class="chooser-container chooser-center-container",
-        icon("arrow-circle-o-right", "right-arrow fa-3x"),
-        tags$br(),
-        icon("arrow-circle-o-left", "left-arrow fa-3x")
-      ),
-      div(class="chooser-container chooser-right-container",
-        tags$select(class="right", size=size, multiple=multiple, rightChoices)
-      )
+    div(id=inputId, class="chooser",style="",
+        div(
+          div(style="min-width:100px;",
+              tags$input(type="text",class="chooser-input-search",style="width:100px;")
+          )
+        ),
+        div(style="display:table",
+            div(style="min-width:100px; display:table-cell;",
+                div(class="chooser-container chooser-left-container",
+                    style="width:100%;",
+                    tags$select(class="left", size=size, multiple=multiple, leftChoices,style="width:100%;min-width:100px")
+                )
+            ),
+            div(style="min-width:50px; display:table-cell;vertical-align: middle;",
+                div(class="chooser-container chooser-center-container",
+                    style="padding:10px;",
+                    icon("arrow-circle-o-right", "right-arrow fa-3x"),
+                    tags$br(),
+                    icon("arrow-circle-o-left", "left-arrow fa-3x")
+                )
+            ),
+            div(style="min-width:100px; display:table-cell;",
+                div(class="chooser-container chooser-right-container", style="width:100%;",
+                    tags$select(class="right", size=size, multiple=multiple, rightChoices,style="width:100%;")
+                )
+            )
+        )
     )
   )
 }
@@ -37,4 +52,4 @@ registerInputHandler("shinyjsexamples.chooser", function(data, ...) {
     NULL
   else
     list(left=as.character(data$left), right=as.character(data$right))
-}, force = TRUE)
+}, force = TRUE) 
