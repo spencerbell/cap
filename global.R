@@ -18,7 +18,9 @@ library(purrr)
 library(sf)
 library(gridExtra)
 library(sjPlot)
+library(sp)
 
+source("mod_shpPoly.R")
 source("chooser.R")
 
 
